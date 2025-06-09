@@ -143,6 +143,42 @@ response = client.chat.completions.create(
 - **`images`**: List of image paths to analyze
 - **`auto_allow_permissions`**: Skip all permission prompts (use with caution!)
 
+### 🔄 Fallback API Feature
+
+When Claude Code is unavailable, the system automatically switches to fallback APIs. You can configure up to 5 fallback APIs:
+
+1. **Configure Fallback APIs**
+   Add to your `.env` file:
+   ```bash
+   # Fallback API 1 - OpenAI
+   FALLBACK_API_NAME_1=OpenAI
+   FALLBACK_API_URL_1=https://api.openai.com/v1
+   FALLBACK_API_KEY_1=your-openai-api-key
+   FALLBACK_API_MODEL_1=gpt-4-turbo-preview
+   
+   # Fallback API 2 - Anthropic Claude
+   FALLBACK_API_NAME_2=Claude
+   FALLBACK_API_URL_2=https://api.anthropic.com/v1
+   FALLBACK_API_KEY_2=your-anthropic-api-key
+   FALLBACK_API_MODEL_2=claude-3-opus-20240229
+   
+   # You can continue adding 3, 4, 5...
+   ```
+
+2. **Automatic Failover**
+   - When Claude Code CLI fails, the system automatically tries fallback APIs
+   - Attempts are made in configuration order until successful
+   - All fallback APIs must be OpenAI-compatible
+
+3. **Important Notes**
+   - Fallback APIs don't support special features in `claude_options` (like file operation tools)
+   - Only basic conversation features are supported
+   - Response format automatically adapts to OpenAI standard
+
+4. **Monitoring and Logging**
+   - System logs which API provider was used
+   - Check logs for failover details
+
 ## 🔧 Quick Start
 
 ### Prerequisites

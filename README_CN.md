@@ -269,6 +269,42 @@ curl -X POST http://localhost:8082/v1/chat/completions \
 - **`images`**：要分析的图像路径列表
 - **`auto_allow_permissions`**：跳过所有权限提示（请谨慎使用！）
 
+### 🔄 备用 API 功能
+
+当 Claude Code 不可用时，系统会自动切换到备用 API。您可以配置多达 5 个备用 API：
+
+1. **配置备用 API**
+   在 `.env` 文件中添加：
+   ```bash
+   # 备用 API 1 - OpenAI
+   FALLBACK_API_NAME_1=OpenAI
+   FALLBACK_API_URL_1=https://api.openai.com/v1
+   FALLBACK_API_KEY_1=your-openai-api-key
+   FALLBACK_API_MODEL_1=gpt-4-turbo-preview
+   
+   # 备用 API 2 - Anthropic Claude
+   FALLBACK_API_NAME_2=Claude
+   FALLBACK_API_URL_2=https://api.anthropic.com/v1
+   FALLBACK_API_KEY_2=your-anthropic-api-key
+   FALLBACK_API_MODEL_2=claude-3-opus-20240229
+   
+   # 可以继续添加 3、4、5...
+   ```
+
+2. **自动故障转移**
+   - 当 Claude Code CLI 失败时，系统会自动尝试备用 API
+   - 按照配置顺序依次尝试，直到成功
+   - 所有备用 API 必须兼容 OpenAI 格式
+
+3. **注意事项**
+   - 备用 API 不支持 `claude_options` 中的特殊功能（如文件操作工具）
+   - 仅支持基本的对话功能
+   - 响应格式会自动适配 OpenAI 标准
+
+4. **监控和日志**
+   - 系统会记录使用了哪个 API 提供商
+   - 可以在日志中查看故障转移详情
+
 ## ⚠️ 使用注意事项
 
 - **响应延迟**：API 响应有时较慢，适合非实时性任务
