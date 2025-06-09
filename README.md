@@ -59,9 +59,11 @@ def process_documents(documents):
         response = client.chat.completions.create(
             model="claude-code",
             messages=[{"role": "user", "content": f"Analyze this document: {doc}"}],
-            claude_options={
-                "tools": ["Read", "Grep"],  # Enable file reading tools
-                "working_dir": "/path/to/documents"
+            extra_body={
+                "claude_options": {
+                    "tools": ["Read", "Grep"],  # Enable file reading tools
+                    "working_dir": "/path/to/documents"
+                }
             }
         )
         results.append(response.choices[0].message.content)
@@ -280,10 +282,12 @@ curl -X POST http://localhost:8082/v1/chat/completions \
            "role": "user", 
            "content": "Please analyze the code structure and suggest improvements. Check for any security issues and optimize the performance."
        }],
-       claude_options={
-           "tools": ["Read", "Grep", "Edit"],  # Allow reading, searching, and editing files
-           "working_dir": "/Users/john/myproject",
-           "files": ["src/main.py", "src/utils.py", "config.json"]
+       extra_body={
+           "claude_options": {
+               "tools": ["Read", "Grep", "Edit"],  # Allow reading, searching, and editing files
+               "working_dir": "/Users/john/myproject",
+               "files": ["src/main.py", "src/utils.py", "config.json"]
+           }
        }
    )
    ```
@@ -296,10 +300,12 @@ curl -X POST http://localhost:8082/v1/chat/completions \
            "role": "user", 
            "content": "Run the test suite, identify failing tests, and fix the issues"
        }],
-       claude_options={
-           "tools": ["Bash", "Read", "Edit"],  # Can run commands and fix code
-           "working_dir": "/Users/john/myproject",
-           "model": "opus"  # Use the most capable model
+       extra_body={
+           "claude_options": {
+               "tools": ["Bash", "Read", "Edit"],  # Can run commands and fix code
+               "working_dir": "/Users/john/myproject",
+               "model": "opus"  # Use the most capable model
+           }
        }
    )
    ```
@@ -312,10 +318,12 @@ curl -X POST http://localhost:8082/v1/chat/completions \
            "role": "user", 
            "content": "Look at this UI design mockup and create a React component that matches it"
        }],
-       claude_options={
-           "tools": ["Read", "Write"],
-           "images": ["/Users/john/designs/login-page.png"],
-           "working_dir": "/Users/john/react-app/src/components"
+       extra_body={
+           "claude_options": {
+               "tools": ["Read", "Write"],
+               "images": ["/Users/john/designs/login-page.png"],
+               "working_dir": "/Users/john/react-app/src/components"
+           }
        }
    )
    ```
@@ -328,9 +336,11 @@ curl -X POST http://localhost:8082/v1/chat/completions \
            "role": "user", 
            "content": "Continue working on the refactoring we started earlier"
        }],
-       claude_options={
-           "session_id": "abc123",  # Resume specific session
-           "tools": ["Read", "Edit", "Bash"]
+       extra_body={
+           "claude_options": {
+               "session_id": "abc123",  # Resume specific session
+               "tools": ["Read", "Edit", "Bash"]
+           }
        }
    )
    ```
@@ -343,11 +353,13 @@ curl -X POST http://localhost:8082/v1/chat/completions \
            "role": "user", 
            "content": "Debug why the application is crashing on startup"
        }],
-       claude_options={
-           "tools": ["Read", "Grep"],  # Read-only access
-           "disallowed_tools": ["Edit", "Write", "Bash"],  # Prevent modifications
-           "working_dir": "/Users/john/production-app",
-           "debug": True  # Enable debug output
+       extra_body={
+           "claude_options": {
+               "tools": ["Read", "Grep"],  # Read-only access
+               "disallowed_tools": ["Edit", "Write", "Bash"],  # Prevent modifications
+               "working_dir": "/Users/john/production-app",
+               "debug": True  # Enable debug output
+           }
        }
    )
    ```
@@ -360,10 +372,12 @@ curl -X POST http://localhost:8082/v1/chat/completions \
            "role": "user", 
            "content": "Refactor the entire codebase to use async/await"
        }],
-       claude_options={
-           "tools": ["Read", "Edit", "Write", "Bash"],
-           "working_dir": "/Users/john/myproject",
-           "auto_allow_permissions": True  # Skip ALL permission prompts!
+       extra_body={
+           "claude_options": {
+               "tools": ["Read", "Edit", "Write", "Bash"],
+               "working_dir": "/Users/john/myproject",
+               "auto_allow_permissions": True  # Skip ALL permission prompts!
+           }
        }
    )
    ```

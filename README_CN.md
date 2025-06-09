@@ -59,9 +59,11 @@ def process_documents(documents):
         response = client.chat.completions.create(
             model="claude-code",
             messages=[{"role": "user", "content": f"分析以下文档：{doc}"}],
-            claude_options={
-                "tools": ["Read", "Grep"],  # 启用文件读取工具
-                "working_dir": "/path/to/documents"
+            extra_body={
+                "claude_options": {
+                    "tools": ["Read", "Grep"],  # 启用文件读取工具
+                    "working_dir": "/path/to/documents"
+                }
             }
         )
         results.append(response.choices[0].message.content)
@@ -183,10 +185,12 @@ curl -X POST http://localhost:8082/v1/chat/completions \
            "role": "user", 
            "content": "请分析代码结构并提出改进建议。检查是否有安全问题并优化性能。"
        }],
-       claude_options={
-           "tools": ["Read", "Grep", "Edit"],  # 允许读取、搜索和编辑文件
-           "working_dir": "/Users/zhang/myproject",
-           "files": ["src/main.py", "src/utils.py", "config.json"]
+       extra_body={
+           "claude_options": {
+               "tools": ["Read", "Grep", "Edit"],  # 允许读取、搜索和编辑文件
+               "working_dir": "/Users/zhang/myproject",
+               "files": ["src/main.py", "src/utils.py", "config.json"]
+           }
        }
    )
    ```
@@ -199,10 +203,12 @@ curl -X POST http://localhost:8082/v1/chat/completions \
            "role": "user", 
            "content": "运行测试套件，找出失败的测试并修复问题"
        }],
-       claude_options={
-           "tools": ["Bash", "Read", "Edit"],  # 可以执行命令和修改代码
-           "working_dir": "/Users/zhang/myproject",
-           "model": "opus"  # 使用最强大的模型
+       extra_body={
+           "claude_options": {
+               "tools": ["Bash", "Read", "Edit"],  # 可以执行命令和修改代码
+               "working_dir": "/Users/zhang/myproject",
+               "model": "opus"  # 使用最强大的模型
+           }
        }
    )
    ```
@@ -215,10 +221,12 @@ curl -X POST http://localhost:8082/v1/chat/completions \
            "role": "user", 
            "content": "查看这个 UI 设计稿，创建一个匹配的 React 组件"
        }],
-       claude_options={
-           "tools": ["Read", "Write"],
-           "images": ["/Users/zhang/designs/login-page.png"],
-           "working_dir": "/Users/zhang/react-app/src/components"
+       extra_body={
+           "claude_options": {
+               "tools": ["Read", "Write"],
+               "images": ["/Users/zhang/designs/login-page.png"],
+               "working_dir": "/Users/zhang/react-app/src/components"
+           }
        }
    )
    ```
@@ -231,9 +239,11 @@ curl -X POST http://localhost:8082/v1/chat/completions \
            "role": "user", 
            "content": "继续我们之前开始的重构工作"
        }],
-       claude_options={
-           "session_id": "abc123",  # 恢复特定会话
-           "tools": ["Read", "Edit", "Bash"]
+       extra_body={
+           "claude_options": {
+               "session_id": "abc123",  # 恢复特定会话
+               "tools": ["Read", "Edit", "Bash"]
+           }
        }
    )
    ```
@@ -246,11 +256,13 @@ curl -X POST http://localhost:8082/v1/chat/completions \
            "role": "user", 
            "content": "调试应用启动时崩溃的原因"
        }],
-       claude_options={
-           "tools": ["Read", "Grep"],  # 只读访问
-           "disallowed_tools": ["Edit", "Write", "Bash"],  # 禁止修改
-           "working_dir": "/Users/zhang/production-app",
-           "debug": True  # 启用调试输出
+       extra_body={
+           "claude_options": {
+               "tools": ["Read", "Grep"],  # 只读访问
+               "disallowed_tools": ["Edit", "Write", "Bash"],  # 禁止修改
+               "working_dir": "/Users/zhang/production-app",
+               "debug": True  # 启用调试输出
+           }
        }
    )
    ```
