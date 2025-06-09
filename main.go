@@ -3,28 +3,33 @@ package main
 import (
 	"bytes"
 	"claude-code-api/internal/api"
+	"claude-code-api/internal/logger"
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
 	// Command line flags
 	port := flag.String("port", "8082", "Port to run the server on")
-	host := flag.String("host", "0.0.0.0", "Host to bind the server to")
+	host := flag.String("host", "", "Host to bind to (default: all interfaces)")
 	flag.Parse()
 
-	// Create handler
+	// Override with environment variables if set
+	if envPort := os.Getenv("PORT"); envPort != "" {
+		*port = envPort
+	}
+
+	// Create API handler
 	handler := api.NewHandler()
 
-	// Setup routes
+	// Set up routes
 	mux := http.NewServeMux()
-
-	// OpenAI compatible endpoints
 	mux.HandleFunc("/v1/chat/completions", handler.ChatCompletions)
 	mux.HandleFunc("/v1/models", handler.Models)
 	mux.HandleFunc("/health", handler.HealthCheck)
@@ -35,26 +40,33 @@ func main() {
 		fmt.Fprintf(w, `{"message":"Claude Code API - OpenAI Compatible API Server","version":"1.0.0","endpoints":["/v1/chat/completions","/v1/models","/health"]}`)
 	})
 
+	// Get API key from environment
+	apiKey := os.Getenv("API_KEY")
+	if apiKey == "" {
+		logger.Log.Warn("API_KEY not set. API is publicly accessible!")
+	} else {
+		logger.Log.Info("API Key authentication enabled")
+	}
+
 	// Middleware
-	wrappedMux := loggingMiddleware(corsMiddleware(mux))
+	wrappedMux := loggingMiddleware(corsMiddleware(authMiddleware(apiKey, mux)))
 
 	// Start server
 	addr := fmt.Sprintf("%s:%s", *host, *port)
-	log.Println("=====================================")
-	log.Printf("🚀 Claude Code API Server")
-	log.Printf("🔗 Listening on: http://%s", addr)
-	log.Println("=====================================")
-	log.Println("Available endpoints:")
-	log.Printf("  POST   http://%s/v1/chat/completions", addr)
-	log.Printf("  GET    http://%s/v1/models", addr)
-	log.Printf("  GET    http://%s/health", addr)
-	log.Printf("  GET    http://%s/", addr)
-	log.Println("=====================================")
-	log.Println("Ready to accept requests...")
+	logger.Log.Info("=====================================")
+	logger.Log.Info("🚀 Claude Code API Server")
+	logger.Log.WithField("address", fmt.Sprintf("http://%s", addr)).Info("🔗 Listening on")
+	logger.Log.Info("=====================================")
+	logger.Log.Info("Available endpoints:")
+	logger.Log.Infof("  POST   http://%s/v1/chat/completions", addr)
+	logger.Log.Infof("  GET    http://%s/v1/models", addr)
+	logger.Log.Infof("  GET    http://%s/health", addr)
+	logger.Log.Infof("  GET    http://%s/", addr)
+	logger.Log.Info("=====================================")
+	logger.Log.Info("Ready to accept requests...")
 
 	if err := http.ListenAndServe(addr, wrappedMux); err != nil {
-		log.Fatalf("Server failed to start: %v", err)
-		os.Exit(1)
+		logger.Log.WithError(err).Fatal("Server failed to start")
 	}
 }
 
@@ -82,22 +94,33 @@ func loggingMiddleware(next http.Handler) http.Handler {
 		// Wrap ResponseWriter to capture status code
 		wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 
-		log.Printf("[REQUEST] %s %s %s", r.RemoteAddr, r.Method, r.URL.Path)
+		// Create log entry with request info
+		entry := logger.Log.WithFields(logrus.Fields{
+			"remote_addr": r.RemoteAddr,
+			"method":      r.Method,
+			"path":        r.URL.Path,
+		})
+
+		entry.Info("Request received")
 
 		// Log request body for POST requests
 		if r.Method == "POST" && r.Body != nil {
 			body, _ := io.ReadAll(r.Body)
 			r.Body = io.NopCloser(bytes.NewBuffer(body))
 			if len(body) > 0 {
-				log.Printf("[REQUEST BODY] %s", string(body))
+				// Sanitize the body before logging
+				sanitized := logger.SanitizeRequest(string(body))
+				entry.WithField("body", sanitized).Debug("Request body")
 			}
 		}
 
 		next.ServeHTTP(wrapped, r)
 
 		duration := time.Since(start)
-		log.Printf("[RESPONSE] %s %s %s - Status: %d - Duration: %v",
-			r.RemoteAddr, r.Method, r.URL.Path, wrapped.statusCode, duration)
+		entry.WithFields(logrus.Fields{
+			"status":   wrapped.statusCode,
+			"duration": duration,
+		}).Info("Request completed")
 	})
 }
 
@@ -110,4 +133,70 @@ type responseWriter struct {
 func (rw *responseWriter) WriteHeader(code int) {
 	rw.statusCode = code
 	rw.ResponseWriter.WriteHeader(code)
+}
+
+// authMiddleware validates API key
+func authMiddleware(apiKey string, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Skip auth if no API key is configured
+		if apiKey == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Skip auth for health check
+		if r.URL.Path == "/health" || r.URL.Path == "/" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Get authorization header
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			logger.Log.WithFields(logrus.Fields{
+				"path":        r.URL.Path,
+				"remote_addr": r.RemoteAddr,
+			}).Warn("Missing authorization header")
+			respondWithAuthError(w)
+			return
+		}
+
+		// Check Bearer token format
+		const bearerPrefix = "Bearer "
+		if len(authHeader) < len(bearerPrefix) || authHeader[:len(bearerPrefix)] != bearerPrefix {
+			logger.Log.WithFields(logrus.Fields{
+				"path":        r.URL.Path,
+				"remote_addr": r.RemoteAddr,
+			}).Warn("Invalid authorization format")
+			respondWithAuthError(w)
+			return
+		}
+
+		// Extract and validate token
+		token := authHeader[len(bearerPrefix):]
+		if token != apiKey {
+			logger.Log.WithFields(logrus.Fields{
+				"path":        r.URL.Path,
+				"remote_addr": r.RemoteAddr,
+			}).Warn("Invalid API key")
+			respondWithAuthError(w)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// respondWithAuthError returns OpenAI-style authentication error
+func respondWithAuthError(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusUnauthorized)
+	fmt.Fprintf(w, `{
+		"error": {
+			"message": "Incorrect API key provided. You can find your API key at https://platform.openai.com/account/api-keys.",
+			"type": "invalid_request_error",
+			"param": null,
+			"code": "invalid_api_key"
+		}
+	}`)
 }

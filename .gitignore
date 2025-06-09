@@ -28,6 +28,9 @@ dist/
 *.swo
 *~
 
+# Claude specific files
+.claude/
+
 # OS specific files
 .DS_Store
 Thumbs.db
@@ -38,6 +41,7 @@ Thumbs.db
 
 # Logs
 *.log
+logs/
 
 # Temporary files
 tmp/

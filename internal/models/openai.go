@@ -14,6 +14,9 @@ type ChatCompletionRequest struct {
 	FrequencyPenalty float64        `json:"frequency_penalty,omitempty"`
 	LogitBias        map[string]int `json:"logit_bias,omitempty"`
 	User             string         `json:"user,omitempty"`
+	
+	// Claude-specific options (optional)
+	ClaudeOptions    map[string]interface{} `json:"claude_options,omitempty"`
 }
 
 // ChatMessage represents a message in the conversation

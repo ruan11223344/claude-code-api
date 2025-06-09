@@ -2,10 +2,10 @@ package api
 
 import (
 	"bytes"
+	"claude-code-api/internal/logger"
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"time"
@@ -38,7 +38,7 @@ func NewFallbackClient() *FallbackClient {
 			Model:   getEnvOrDefault("FALLBACK_API_MODEL_1", "gpt-3.5-turbo"),
 		}
 		providers = append(providers, provider)
-		log.Printf("[FALLBACK] Provider 1 '%s' configured at %s", provider.Name, provider.BaseURL)
+		logger.Log.Infof("[FALLBACK] Provider 1 '%s' configured at %s", provider.Name, provider.BaseURL)
 	}
 	
 	// Load secondary fallback API
@@ -50,7 +50,7 @@ func NewFallbackClient() *FallbackClient {
 			Model:   getEnvOrDefault("FALLBACK_API_MODEL_2", "gpt-3.5-turbo"),
 		}
 		providers = append(providers, provider)
-		log.Printf("[FALLBACK] Provider 2 '%s' configured at %s", provider.Name, provider.BaseURL)
+		logger.Log.Infof("[FALLBACK] Provider 2 '%s' configured at %s", provider.Name, provider.BaseURL)
 	}
 	
 	// Load additional fallback APIs (3-5)
@@ -64,7 +64,7 @@ func NewFallbackClient() *FallbackClient {
 				Model:   getEnvOrDefault(fmt.Sprintf("FALLBACK_API_MODEL_%d", i), "gpt-3.5-turbo"),
 			}
 			providers = append(providers, provider)
-			log.Printf("[FALLBACK] Provider %d '%s' configured at %s", i, provider.Name, provider.BaseURL)
+			logger.Log.Infof("[FALLBACK] Provider %d '%s' configured at %s", i, provider.Name, provider.BaseURL)
 		}
 	}
 
@@ -84,19 +84,19 @@ func (fc *FallbackClient) CallWithFallback(primaryFunc func() (string, error)) (
 		return response, nil
 	}
 
-	log.Printf("[FALLBACK] Primary API failed: %v", err)
+	logger.Log.Infof("[FALLBACK] Primary API failed: %v", err)
 
 	// Try fallback providers
 	for i, provider := range fc.providers {
-		log.Printf("[FALLBACK] Trying fallback provider %d/%d: %s", i+1, len(fc.providers), provider.Name)
+		logger.Log.Infof("[FALLBACK] Trying fallback provider %d/%d: %s", i+1, len(fc.providers), provider.Name)
 		
 		response, err := fc.callProvider(provider)
 		if err == nil {
-			log.Printf("[FALLBACK] ✅ Success with %s", provider.Name)
+			logger.Log.Infof("[FALLBACK] ✅ Success with %s", provider.Name)
 			return response, nil
 		}
 		
-		log.Printf("[FALLBACK] ❌ Provider %s failed: %v", provider.Name, err)
+		logger.Log.Infof("[FALLBACK] ❌ Provider %s failed: %v", provider.Name, err)
 	}
 
 	return "", fmt.Errorf("all providers failed, last error: %v", err)
@@ -220,7 +220,7 @@ func (fc *FallbackClient) CallOpenAICompatibleAPI(provider FallbackProvider, mes
 		if choice, ok := choices[0].(map[string]interface{}); ok {
 			if message, ok := choice["message"].(map[string]interface{}); ok {
 				if content, ok := message["content"].(string); ok {
-					log.Printf("[FALLBACK] %s responded in %v", provider.Name, duration)
+					logger.Log.Infof("[FALLBACK] %s responded in %v", provider.Name, duration)
 					return content, nil
 				}
 			}

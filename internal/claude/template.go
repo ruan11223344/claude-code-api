@@ -1,6 +1,7 @@
 package claude
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 )
@@ -43,22 +44,31 @@ func (c *TemplateClient) AnalyzeProduct(filePath string) (*ProductInfo, error) {
 		return nil, err
 	}
 	
-	prompt := fmt.Sprintf(`请分析以下产品信息，并以JSON格式返回：
+	prompt := fmt.Sprintf(`Please analyze the following product information and return it in JSON format:
 	{
-		"name": "产品名称",
-		"brand": "品牌",
-		"price": "价格",
-		"currency": "货币单位",
-		"description": "产品描述",
-		"features": ["特征1", "特征2"]
+		"name": "product name",
+		"brand": "brand",
+		"price": "price",
+		"currency": "currency unit",
+		"description": "product description",
+		"features": ["feature1", "feature2"]
 	}
 	
-	产品信息：
+	Product information:
 	%s`, string(content))
 	
-	var productInfo ProductInfo
-	if err := c.client.AskJSON(prompt, &productInfo); err != nil {
+	// Use AskWithOptions with JSON output format
+	response, err := c.client.AskWithOptions(prompt, map[string]interface{}{
+		"output_format": "json",
+	})
+	if err != nil {
 		return nil, err
+	}
+	
+	// Parse JSON response
+	var productInfo ProductInfo
+	if err := json.Unmarshal([]byte(response), &productInfo); err != nil {
+		return nil, fmt.Errorf("failed to parse JSON response: %v", err)
 	}
 	
 	return &productInfo, nil
@@ -66,21 +76,30 @@ func (c *TemplateClient) AnalyzeProduct(filePath string) (*ProductInfo, error) {
 
 // OptimizeSEO analyzes content for SEO optimization
 func (c *TemplateClient) OptimizeSEO(content string) (*SEOAnalysis, error) {
-	prompt := fmt.Sprintf(`请对以下内容进行SEO分析，并以JSON格式返回：
+	prompt := fmt.Sprintf(`Please analyze the following content for SEO and return it in JSON format:
 	{
-		"title": "优化后的标题",
-		"description": "优化后的描述",
-		"keywords": ["关键词1", "关键词2"],
+		"title": "optimized title",
+		"description": "optimized description",
+		"keywords": ["keyword1", "keyword2"],
 		"score": 85,
-		"suggestions": ["建议1", "建议2"]
+		"suggestions": ["suggestion1", "suggestion2"]
 	}
 	
-	内容：
+	Content:
 	%s`, content)
 	
-	var seoAnalysis SEOAnalysis
-	if err := c.client.AskJSON(prompt, &seoAnalysis); err != nil {
+	// Use AskWithOptions with JSON output format
+	response, err := c.client.AskWithOptions(prompt, map[string]interface{}{
+		"output_format": "json",
+	})
+	if err != nil {
 		return nil, err
+	}
+	
+	// Parse JSON response
+	var seoAnalysis SEOAnalysis
+	if err := json.Unmarshal([]byte(response), &seoAnalysis); err != nil {
+		return nil, fmt.Errorf("failed to parse JSON response: %v", err)
 	}
 	
 	return &seoAnalysis, nil
@@ -89,30 +108,30 @@ func (c *TemplateClient) OptimizeSEO(content string) (*SEOAnalysis, error) {
 // UseTemplate applies a predefined template
 func (c *TemplateClient) UseTemplate(templateName string, args ...interface{}) (string, error) {
 	templates := map[string]string{
-		"code_review": `请对以下代码进行审查，包括：
-		1. 代码质量分析
-		2. 潜在的bug和问题
-		3. 性能优化建议
-		4. 最佳实践建议
+		"code_review": `Please review the following code, including:
+		1. Code quality analysis
+		2. Potential bugs and issues
+		3. Performance optimization suggestions
+		4. Best practice recommendations
 		
-		代码文件：%s`,
+		Code file: %s`,
 		
-		"workflow": `请创建一个详细的工作流程，包括：
-		任务名称：%s
-		目标：%s
-		步骤：
+		"workflow": `Please create a detailed workflow, including:
+		Task name: %s
+		Objective: %s
+		Steps:
 		%s
 		
-		请提供详细的执行计划和注意事项。`,
+		Please provide a detailed execution plan and considerations.`,
 		
-		"documentation": `请为以下代码生成文档：
+		"documentation": `Please generate documentation for the following code:
 		%s
 		
-		包括：
-		1. 功能说明
-		2. 参数说明
-		3. 返回值说明
-		4. 使用示例`,
+		Including:
+		1. Function description
+		2. Parameter description
+		3. Return value description
+		4. Usage examples`,
 	}
 	
 	template, exists := templates[templateName]

@@ -2,11 +2,11 @@ package api
 
 import (
 	"claude-code-api/internal/claude"
+	"claude-code-api/internal/logger"
 	"claude-code-api/internal/models"
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -29,9 +29,9 @@ func NewHandler() *Handler {
 
 	// Log fallback providers
 	if h.fallbackClient.HasFallbackProviders() {
-		log.Printf("[HANDLER] Fallback providers configured: %v", h.fallbackClient.GetProviderNames())
+		logger.Log.Infof("[HANDLER] Fallback providers configured: %v", h.fallbackClient.GetProviderNames())
 	} else {
-		log.Printf("[HANDLER] No fallback providers configured")
+		logger.Log.Infof("[HANDLER] No fallback providers configured")
 	}
 
 	return h
@@ -71,17 +71,23 @@ func (h *Handler) handleNormalResponse(w http.ResponseWriter, req models.ChatCom
 	// Prepare the conversation for Claude
 	conversation := h.prepareConversation(req.Messages)
 
-	log.Printf("[CLAUDE REQUEST] Model: %s, Messages: %d", req.Model, len(req.Messages))
+	logger.Log.Infof("[CLAUDE REQUEST] Model: %s, Messages: %d", req.Model, len(req.Messages))
 
 	var response string
 	var err error
-	var usedFallback bool
+	var usedProvider string = "CLAUDE"
 
 	// Try Claude first
-	response, err = h.claudeClient.Ask(conversation)
+	if req.ClaudeOptions != nil && len(req.ClaudeOptions) > 0 {
+		// Use the new method with options
+		response, err = h.claudeClient.AskWithOptions(conversation, req.ClaudeOptions)
+	} else {
+		// Use the simple Ask method
+		response, err = h.claudeClient.Ask(conversation)
+	}
 	// If Claude fails and we have fallback providers, try them
 	if err != nil && h.fallbackClient.HasFallbackProviders() {
-		log.Printf("[CLAUDE ERROR] %v, attempting fallback", err)
+		logger.Log.Infof("[CLAUDE ERROR] %v, attempting fallback", err)
 
 		// Convert messages to OpenAI format for fallback
 		openAIMessages := make([]map[string]string, len(req.Messages))
@@ -95,29 +101,25 @@ func (h *Handler) handleNormalResponse(w http.ResponseWriter, req models.ChatCom
 		// Try each fallback provider
 		providers := h.fallbackClient.GetProviders()
 		for _, provider := range providers {
-			log.Printf("[FALLBACK] Trying %s", provider.Name)
+			logger.Log.Infof("[%s] Trying...", provider.Name)
 			response, err = h.fallbackClient.CallOpenAICompatibleAPI(provider, openAIMessages, req.Model)
 			if err == nil {
-				usedFallback = true
-				log.Printf("[FALLBACK] ✅ Success with %s", provider.Name)
+				usedProvider = provider.Name
+				logger.Log.Infof("[%s] ✅ Success", provider.Name)
 				break
 			}
-			log.Printf("[FALLBACK] ❌ %s failed: %v", provider.Name, err)
+			logger.Log.Infof("[%s] ❌ Failed: %v", provider.Name, err)
 		}
 	}
 
 	// If all attempts failed
 	if err != nil {
-		log.Printf("[API ERROR] All providers failed: %v", err)
+		logger.Log.Infof("[API ERROR] All providers failed: %v", err)
 		h.sendError(w, http.StatusInternalServerError, "Internal server error", "api_error")
 		return
 	}
 
-	if usedFallback {
-		log.Printf("[FALLBACK RESPONSE] Length: %d characters", len(response))
-	} else {
-		log.Printf("[CLAUDE RESPONSE] Length: %d characters", len(response))
-	}
+	logger.Log.Infof("[%s RESPONSE] Length: %d characters", usedProvider, len(response))
 
 	// Create response
 	resp := models.ChatCompletionResponse{
@@ -144,7 +146,7 @@ func (h *Handler) handleNormalResponse(w http.ResponseWriter, req models.ChatCom
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		log.Printf("Error encoding response: %v", err)
+		logger.Log.Infof("Error encoding response: %v", err)
 	}
 }
 
@@ -164,7 +166,7 @@ func (h *Handler) handleStreamingResponse(w http.ResponseWriter, req models.Chat
 	// Prepare conversation
 	conversation := h.prepareConversation(req.Messages)
 
-	log.Printf("[CLAUDE STREAM REQUEST] Model: %s, Messages: %d", req.Model, len(req.Messages))
+	logger.Log.Infof("[CLAUDE STREAM REQUEST] Model: %s, Messages: %d", req.Model, len(req.Messages))
 
 	// Generate a request ID
 	requestID := fmt.Sprintf("chatcmpl-%s", uuid.New().String())
@@ -190,13 +192,41 @@ func (h *Handler) handleStreamingResponse(w http.ResponseWriter, req models.Chat
 	flusher.Flush()
 
 	// Call Claude and get response
-	response, err := h.claudeClient.Ask(conversation)
+	var response string
+	var err error
+	
+	if req.ClaudeOptions != nil && len(req.ClaudeOptions) > 0 {
+		// Use the new method with options for streaming too
+		response, err = h.claudeClient.AskWithOptions(conversation, req.ClaudeOptions)
+	} else {
+		// Use the simple Ask method
+		response, err = h.claudeClient.Ask(conversation)
+	}
+	
 	if err != nil {
-		log.Printf("[CLAUDE STREAM ERROR] %v", err)
+		logger.Log.Infof("[CLAUDE STREAM ERROR] %v", err)
+		// Send error chunk to client
+		errorChunk := models.StreamResponse{
+			ID:      requestID,
+			Object:  "chat.completion.chunk",
+			Created: time.Now().Unix(),
+			Model:   req.Model,
+			Choices: []models.StreamChoice{
+				{
+					Index: 0,
+					Delta: models.DeltaContent{
+						Content: fmt.Sprintf("Error: %v", err),
+					},
+					FinishReason: nil,
+				},
+			},
+		}
+		h.sendStreamChunk(w, errorChunk)
+		flusher.Flush()
 		return
 	}
 
-	log.Printf("[CLAUDE STREAM RESPONSE] Length: %d characters", len(response))
+	logger.Log.Infof("[CLAUDE STREAM RESPONSE] Length: %d characters", len(response))
 
 	// Stream the response in chunks
 	words := strings.Fields(response)
@@ -277,7 +307,7 @@ func (h *Handler) prepareConversation(messages []models.ChatMessage) string {
 func (h *Handler) sendStreamChunk(w io.Writer, chunk models.StreamResponse) {
 	data, err := json.Marshal(chunk)
 	if err != nil {
-		log.Printf("Error marshaling chunk: %v", err)
+		logger.Log.Infof("Error marshaling chunk: %v", err)
 		return
 	}
 
@@ -303,7 +333,7 @@ func (h *Handler) sendError(w http.ResponseWriter, statusCode int, message, erro
 	}
 
 	if err := json.NewEncoder(w).Encode(errorResp); err != nil {
-		log.Printf("Error encoding error response: %v", err)
+		logger.Log.Infof("Error encoding error response: %v", err)
 	}
 }
 
@@ -334,7 +364,7 @@ func (h *Handler) Models(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		log.Printf("Error encoding response: %v", err)
+		logger.Log.Infof("Error encoding response: %v", err)
 	}
 }
 
