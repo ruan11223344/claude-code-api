@@ -44,19 +44,27 @@
 
 ### 1. 构建自己的 AI 应用
 ```python
-# 示例：批量处理文档
-import anthropic
+# 示例：使用 Claude Code API 批量处理文档
+import openai
 
-client = anthropic.Anthropic(api_key="your-api-key")
+# 指向你的 Claude Code API 服务器
+client = openai.OpenAI(
+    api_key="your-api-key",
+    base_url="http://localhost:8082/v1"
+)
 
 def process_documents(documents):
     results = []
     for doc in documents:
-        response = client.messages.create(
+        response = client.chat.completions.create(
             model="claude-code",
-            messages=[{"role": "user", "content": f"分析以下文档：{doc}"}]
+            messages=[{"role": "user", "content": f"分析以下文档：{doc}"}],
+            claude_options={
+                "tools": ["Read", "Grep"],  # 启用文件读取工具
+                "working_dir": "/path/to/documents"
+            }
         )
-        results.append(response.content)
+        results.append(response.choices[0].message.content)
     return results
 ```
 

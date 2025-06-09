@@ -44,19 +44,27 @@ Many developers find themselves with unused credits after subscribing to Claude 
 
 ### 1. Build Your Own AI Applications
 ```python
-# Example: Batch document processing
-import anthropic
+# Example: Batch document processing using Claude Code API
+import openai
 
-client = anthropic.Anthropic(api_key="your-api-key")
+# Point to your Claude Code API server
+client = openai.OpenAI(
+    api_key="your-api-key",
+    base_url="http://localhost:8082/v1"
+)
 
 def process_documents(documents):
     results = []
     for doc in documents:
-        response = client.messages.create(
-            model="claude-3-opus-20240229",
-            messages=[{"role": "user", "content": f"Analyze this document: {doc}"}]
+        response = client.chat.completions.create(
+            model="claude-code",
+            messages=[{"role": "user", "content": f"Analyze this document: {doc}"}],
+            claude_options={
+                "tools": ["Read", "Grep"],  # Enable file reading tools
+                "working_dir": "/path/to/documents"
+            }
         )
-        results.append(response.content)
+        results.append(response.choices[0].message.content)
     return results
 ```
 
