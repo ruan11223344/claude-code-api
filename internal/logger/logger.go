@@ -11,7 +11,8 @@ import (
 
 var Log *logrus.Logger
 
-func init() {
+// Initialize initializes the logger with configuration from environment variables
+func Initialize() {
 	Log = logrus.New()
 	
 	// Set log level from environment
@@ -71,6 +72,17 @@ func init() {
 		// Only log to stdout
 		Log.SetOutput(os.Stdout)
 	}
+}
+
+// init creates a basic logger for use before Initialize is called
+func init() {
+	Log = logrus.New()
+	Log.SetLevel(logrus.InfoLevel)
+	Log.SetFormatter(&CustomTextFormatter{
+		TimestampFormat: "15:04:05",
+		FullTimestamp:   true,
+	})
+	Log.SetOutput(os.Stdout)
 }
 
 // CustomTextFormatter formats logs in a clean, readable format

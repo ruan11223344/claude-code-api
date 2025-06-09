@@ -18,8 +18,11 @@ import (
 func main() {
 	// Load .env file if it exists
 	if err := godotenv.Load(); err != nil {
-		logger.Log.Debug("No .env file found")
+		// Don't log here since logger hasn't been initialized yet
 	}
+
+	// Initialize logger after .env is loaded
+	logger.Initialize()
 
 	// Command line flags
 	port := flag.String("port", "8082", "Port to run the server on")
