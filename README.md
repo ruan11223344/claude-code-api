@@ -108,19 +108,23 @@ Academic research teams use Claude API to analyze large volumes of literature, a
 
 ## 🚀 Advanced Features
 
-This API wrapper supports all Claude Code CLI features through the `claude_options` field:
+This API wrapper supports all Claude Code CLI features through the `claude_options` field.
+
+**Important**: When using the official OpenAI Python/JS client libraries, you must use `extra_body` parameter to pass `claude_options`:
 
 ```python
 # Example: Using Claude with file operations
 response = client.chat.completions.create(
     model="claude-code",
     messages=[{"role": "user", "content": "Analyze this codebase and suggest improvements"}],
-    claude_options={
-        "tools": ["Bash", "Edit", "Read", "Grep"],  # Enable specific tools
-        "working_dir": "/path/to/project",          # Set working directory
-        "session_id": "abc123",                     # Resume a session
-        "files": ["config.json", "main.py"],       # Include files in context
-        "images": ["diagram.png"]                   # Include images
+    extra_body={
+        "claude_options": {
+            "tools": ["Bash", "Edit", "Read", "Grep"],  # Enable specific tools
+            "working_dir": "/path/to/project",          # Set working directory
+            "session_id": "abc123",                     # Resume a session
+            "files": ["config.json", "main.py"],       # Include files in context
+            "images": ["diagram.png"]                   # Include images
+        }
     }
 )
 ```

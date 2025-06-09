@@ -11,10 +11,16 @@ import (
 	"os"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 )
 
 func main() {
+	// Load .env file if it exists
+	if err := godotenv.Load(); err != nil {
+		logger.Log.Debug("No .env file found")
+	}
+
 	// Command line flags
 	port := flag.String("port", "8082", "Port to run the server on")
 	host := flag.String("host", "", "Host to bind to (default: all interfaces)")

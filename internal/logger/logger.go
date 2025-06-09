@@ -2,7 +2,6 @@ package logger
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"strings"
 	"time"
