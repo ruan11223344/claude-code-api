@@ -93,7 +93,8 @@ func (h *Handler) handleNormalResponse(w http.ResponseWriter, req models.ChatCom
 		}
 
 		// Try each fallback provider
-		for _, provider := range h.fallbackClient.providers {
+		providers := h.fallbackClient.GetProviders()
+		for _, provider := range providers {
 			log.Printf("[FALLBACK] Trying %s", provider.Name)
 			response, err = h.fallbackClient.CallOpenAICompatibleAPI(provider, openAIMessages, req.Model)
 			if err == nil {

@@ -251,3 +251,8 @@ func (fc *FallbackClient) GetProviderNames() []string {
 	}
 	return names
 }
+
+// GetProviders returns all configured providers
+func (fc *FallbackClient) GetProviders() []FallbackProvider {
+	return fc.providers
+}
