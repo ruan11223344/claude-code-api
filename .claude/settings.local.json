@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(go mod init:*)",
+      "Bash(mkdir:*)",
+      "Bash(mv:*)",
+      "Bash(go get:*)",
+      "Bash(go mod:*)",
+      "Bash(go build:*)",
+      "Bash(rm:*)",
+      "Bash(chmod:*)",
+      "Bash(cp:*)",
+      "Bash(go test:*)",
+      "Bash(curl:*)",
+      "Bash(./test_simple.sh:*)",
+      "Bash(go run:*)"
+    ],
+    "deny": []
+  }
+}
