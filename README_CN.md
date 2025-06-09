@@ -261,7 +261,6 @@ curl -X POST http://localhost:8082/v1/chat/completions \
 - **`disallowed_tools`**：禁用的工具列表
 - **`session_id`**：恢复特定会话
 - **`continue`**：继续最近的会话
-- **`model`**：指定模型（例如："opus"、"sonnet"、"haiku"）
 - **`output_format`**：响应格式（"text"、"json"、"stream-json"）
 - **`debug`**：启用调试模式
 - **`working_dir`**：设置文件操作的工作目录

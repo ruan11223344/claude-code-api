@@ -119,7 +119,6 @@ response = client.chat.completions.create(
         "tools": ["Bash", "Edit", "Read", "Grep"],  # Enable specific tools
         "working_dir": "/path/to/project",          # Set working directory
         "session_id": "abc123",                     # Resume a session
-        "model": "opus",                            # Use a specific model
         "files": ["config.json", "main.py"],       # Include files in context
         "images": ["diagram.png"]                   # Include images
     }
@@ -132,7 +131,6 @@ response = client.chat.completions.create(
 - **`disallowed_tools`**: List of tools to disable
 - **`session_id`**: Resume a specific conversation
 - **`continue`**: Continue the most recent conversation
-- **`model`**: Specify model (e.g., "opus", "sonnet", "haiku")
 - **`output_format`**: Response format ("text", "json", "stream-json")
 - **`debug`**: Enable debug mode
 - **`working_dir`**: Set working directory for file operations
